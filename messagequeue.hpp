@@ -141,7 +141,7 @@ MessageQueue<MessageType>::put(const MessageType & message,
         /* hwm condition and events mechanism active */
         /* increment use count since need to access
            _events in unlocked context */
-        auto events = _events.get();
+        auto events = _events;
         lock.unlock();
         events->on_hwm();
         lock.lock();
@@ -249,7 +249,7 @@ void MessageQueue<MessageType>::stop()
     if (_events) {
         /* increment use count since need to access
            _events in unlocked context */
-        auto events = _events.get();
+        auto events = _events;
         lock.unlock();
         events->on_stop();
     }
