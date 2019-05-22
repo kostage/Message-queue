@@ -7,6 +7,8 @@
 
 #include "messagequeue.hpp"
 
+namespace ZodiacTest {
+
 class Reader 
 {
     using Queue = MessageQueue<std::string>;
@@ -34,3 +36,5 @@ private:
     std::shared_ptr<Queue> _queueSP;
     std::thread _thread;
 };
+
+} // namespace ZodiacTest 

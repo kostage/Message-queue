@@ -2,7 +2,10 @@
 #include "writer.hpp"
 
 #include <cassert>
-#include <iostream>
+
+#include "console.hpp"
+
+namespace ZodiacTest {
 
 typename Writer::WriterState Writer::_state = WriterState::SUSPENDED;
 
@@ -45,23 +48,17 @@ void Writer::mainFunc()
     {
         auto msg = _name + " string #" + std::to_string(localMsgNum++);
         RetCode ret;
-        do
-        {
-            ret = _queueSP->put(msg, prior);
-            if (ret == RetCode::OK) {
-                ++gmsgNum;
-                std::clog << (msg + "\n");
-            } else if (ret == RetCode::STOPPED) {
-                break;
-            }
-        } while (ret == RetCode::HWM ||
-                 ret == RetCode::NO_SPACE);
+
+        ret = _queueSP->put(msg, prior);
         
-        if (ret == RetCode::STOPPED) {
+        if (ret == RetCode::OK) {
+            ++gmsgNum;
+            logConsole(msg + "\n");
+        } else if (ret == RetCode::STOPPED) {
             break;
         }
     }
-    std::clog << (_name + " detected queue stop\n");
+    logConsole(_name + " detected queue stop\n");
 }
 
 void Writer::wakeAll()
@@ -79,3 +76,5 @@ void Writer::suspendAll()
             return _state == WriterState::RUNNING;
         });
 }
+
+} // namespace ZodiacTest 

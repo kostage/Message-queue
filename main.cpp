@@ -4,12 +4,16 @@
 #include <chrono>
 #include <iostream>
 
+#include "console.hpp"
+
+namespace ZodiacTest {
+
 void QueueEvents::on_start()
 {
     Writer::wakeAll();
 }
 
-void QueueEvents::on_stop()
+void QueueEvents::on_stop() noexcept
 {
     Writer::wakeAll();
 }
@@ -51,25 +55,29 @@ void Main::main()
         writer.run();
 }
 
-void Main::stop()
+void Main::stop() noexcept
 {
     _mqueueSP->stop();
-
+    /* join all threads */
     _readers.clear();
     _writers.clear();
-    
-    {
-        auto queueFlush = Reader("LastReader", _mqueueSP);
-        /* notifiers not needed */
-        _mqueueSP->set_events(nullptr);
+}
 
-        std::clog << "Let's flush queue\n";
-        _mqueueSP->run(); // runnable state again
-        queueFlush.run();
-        /* hope this is enough */
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        _mqueueSP->stop();
-    }
+void Main::flush()
+{
+    auto queueFlush = Reader("LastReader", _mqueueSP);
+
+    /* notifiers not needed */
+    _mqueueSP->set_events(nullptr);
+
+    std::clog << "Let's flush queue\n";
+    
+    _mqueueSP->run(); // runnable state again
+    queueFlush.run();
+    
+    /* hope this is enough */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    _mqueueSP->stop();
 
     std::clog << ("Writers wrote " +
                   std::to_string(Writer::gmsgNum) +
@@ -79,14 +87,18 @@ void Main::stop()
                   " messages\n");
 }
 
+
 Main::~Main()
 {
     stop();
 }
 
+
+} // namespace ZodiacTest
+
 int main(int argc, char ** argv)
 {
-    Main app(1/*readers*/, 2/*writers*/);
+    ZodiacTest::Main app(1/*readers*/, 2/*writers*/);
 
     std::clog << "Press enter to start\n";
     std::cin.get();
@@ -96,6 +108,9 @@ int main(int argc, char ** argv)
     std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
 
+    app.stop();
+    app.flush();
+    
     /* destructors do stop & cleanup */
     return 0;
 }

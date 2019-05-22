@@ -2,7 +2,10 @@
 #include "reader.hpp"
 
 #include <cassert>
-#include <iostream>
+
+#include "console.hpp"
+
+namespace ZodiacTest {
 
 std::atomic<size_t> Reader::gmsgNum{0};
 
@@ -39,11 +42,13 @@ void Reader::mainFunc()
             _handleMessage(msg);
     } while (ret == RetCode::OK);
     
-    std::clog << (_name + " detected queue stop\n");
+    logConsole(_name + " detected queue stop\n");
 }
 
 void Reader::_handleMessage(const std::string & msg)
 {
     ++gmsgNum;
-    std::clog << (_name + " read >>> " + msg + "\n");
+    logConsole(_name + " read >>> " + msg + "\n");
 }
+
+} // namespace ZodiacTest 

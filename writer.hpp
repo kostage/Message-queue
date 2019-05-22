@@ -11,7 +11,9 @@
 
 #include "messagequeue.hpp"
 
-class Writer 
+namespace ZodiacTest {
+
+class Writer
 {
     enum class WriterState : int 
     {
@@ -51,3 +53,5 @@ private:
     std::shared_ptr<Queue> _queueSP;
     std::thread _thread;
 };
+
+} // namespace ZodiacTest 

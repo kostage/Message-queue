@@ -7,6 +7,8 @@
 #include <mutex>
 #include <vector>
 
+namespace ZodiacTest {
+    
 enum class RetCode : int {
     OK = 0,
     HWM = -1,
@@ -21,9 +23,9 @@ public:
     virtual ~IMessageQueueEvents() {}
     
     virtual void on_start() = 0;
-    virtual void on_stop() = 0;
     virtual void on_hwm() = 0;
     virtual void on_lwm() = 0;
+    virtual void on_stop() noexcept = 0; // call in destructor
 };
 
 template <typename MessageType>
@@ -38,10 +40,6 @@ class MessageQueue
     enum class QueueState : int {
         RUNNING = 0,
         STOPPED
-    };
-    enum class QueueFill : int {
-        NORMAL = 0,
-        LWM
     };
 
 public:
@@ -92,7 +90,6 @@ private:
     size_t _lwm;
     size_t _hwm;
     QueueState _queueState;
-    QueueFill _queueFill;
     std::vector<MessageTypePrior> _data;
     std::shared_ptr<IMessageQueueEvents> _events;
     mutable std::mutex _dataMtx;
@@ -103,8 +100,7 @@ private:
 template<typename MessageType>
 MessageQueue<MessageType>::MessageQueue(int queueSize,
                                         int lwm, int hwm) :
-    _queueState{QueueState::STOPPED},
-    _queueFill{QueueFill::NORMAL}
+    _queueState{QueueState::STOPPED}
 {
     assert(queueSize > 0);
     _queueSize = queueSize;
@@ -276,3 +272,5 @@ void MessageQueue<MessageType>::set_events(
     std::unique_lock<std::mutex> lock(_dataMtx);
     _events = events;
 }
+
+} // namespace ZodiacTest 
