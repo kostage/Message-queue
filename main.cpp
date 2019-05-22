@@ -20,13 +20,13 @@ void QueueEvents::on_stop() noexcept
 
 void QueueEvents::on_hwm()
 {
-    std::clog << "***Queue high watermark reached!\n";
+    logConsole("***Queue high watermark reached!\n");
     Writer::suspendAll();
 }
 
 void QueueEvents::on_lwm()
 {
-    std::clog << "***Queue low watermark reached!\n";
+    logConsole("***Queue low watermark reached!\n");
     Writer::wakeAll();
 }
 
