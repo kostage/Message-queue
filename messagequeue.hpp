@@ -149,12 +149,16 @@ MessageQueue<MessageType>::put(const MessageType & message,
         /* anything could happen - recheck */
         if (_queueState == QueueState::STOPPED) {
             return RetCode::STOPPED;
-        } else if (_data.size() >= _hwm) {
-            return RetCode::HWM;
-        } else {
-            /* no hwm anymore - proceed */
         }
-    } else if (_data.size() == _queueSize) {
+        /* here I intentionally don't check
+           that HWM condition is not true
+           because that would inject high level logic 
+           into queue, assuming on_hwm() is blocking all writers
+           *
+           HENCE - writers have ability to race
+           for writing higher than HWM level*/
+    }
+    if (_data.size() == _queueSize) {
         /* no free space but events not set
            fall back to simple blocking put,
            wait writers notification */
