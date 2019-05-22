@@ -27,7 +27,7 @@ public:
     Main(size_t rnum, size_t wnum);
     ~Main();
     
-    void run();
+    void main();
     void stop();
 
 private:

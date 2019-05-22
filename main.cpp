@@ -41,7 +41,7 @@ Main::Main(size_t rnum, size_t wnum) :
                                      _mqueueSP));
 }
 
-void Main::run()
+void Main::main()
 {
     _mqueueSP->run();
     for(auto & reader : _readers)
@@ -60,6 +60,8 @@ void Main::stop()
     
     {
         auto queueFlush = Reader("LastReader", _mqueueSP);
+        /* notifiers not needed */
+        _mqueueSP->set_events(nullptr);
 
         std::clog << "Let's flush queue\n";
         _mqueueSP->run(); // runnable state again
@@ -89,7 +91,7 @@ int main(int argc, char ** argv)
     std::clog << "Press enter to start\n";
     std::cin.get();
     
-    app.run();
+    app.main();
 
     std::this_thread::sleep_for(
         std::chrono::milliseconds(100));

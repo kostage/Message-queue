@@ -159,8 +159,7 @@ MessageQueue<MessageType>::put(const MessageType & message,
            for writing higher than HWM level*/
     }
     if (_data.size() == _queueSize) {
-        /* no free space but events not set
-           fall back to simple blocking put,
+        /* no free space -
            wait writers notification */
         _wrNotify.wait(lock, [this] {
                 return _queueState == QueueState::STOPPED ||
@@ -213,8 +212,6 @@ MessageQueue<MessageType>::get(MessageType * message)
     *message = std::move(_data.back().second);
     _data.pop_back();
 
-    /* multiple LWM notification problem here
-       must be solved*/
     if (_events &&
         _data.size() == _lwm)
     {

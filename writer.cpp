@@ -50,6 +50,7 @@ void Writer::mainFunc()
             ret = _queueSP->put(msg, prior);
             if (ret == RetCode::OK) {
                 ++gmsgNum;
+                std::clog << (msg + "\n");
             } else if (ret == RetCode::STOPPED) {
                 break;
             }
