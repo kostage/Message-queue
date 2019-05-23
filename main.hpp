@@ -9,7 +9,7 @@
 #include "reader.hpp"
 #include "writer.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
 class QueueEvents : public IMessageQueueEvents
 {
@@ -34,9 +34,9 @@ public:
     void flush();
 
 private:
-    std::shared_ptr<MessageQueue<std::string>> _mqueueSP;
+    std::shared_ptr<MessageQueue<std::string>> _mqueue_sp;
     std::vector<Reader> _readers;
     std::vector<Writer> _writers;
 };
 
-} // namespace ZodiacTest 
+} // namespace zodiactest 

@@ -7,14 +7,14 @@
 
 #include "messagequeue.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
 class Reader 
 {
     using Queue = MessageQueue<std::string>;
 public:
     Reader(const std::string & name,
-           std::shared_ptr<Queue> queueSP);
+           std::shared_ptr<Queue> queue_sp);
 
     ~Reader();
     
@@ -26,15 +26,15 @@ public:
     void run();
     void mainFunc();
     
-    static std::atomic<size_t> gmsgNum;
+    static std::atomic<size_t> gmsg_num;
 
 protected:
     void _handleMessage(const std::string & msg);
 
 private:
     const std::string _name;
-    std::shared_ptr<Queue> _queueSP;
+    std::shared_ptr<Queue> _queue_sp;
     std::thread _thread;
 };
 
-} // namespace ZodiacTest 
+} // namespace zodiactest 

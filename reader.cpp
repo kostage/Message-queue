@@ -5,22 +5,22 @@
 
 #include "console.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
-std::atomic<size_t> Reader::gmsgNum{0};
+std::atomic<size_t> Reader::gmsg_num{0};
 
 Reader::Reader(const std::string & name,
-               std::shared_ptr<Queue> queueSP) :
+               std::shared_ptr<Queue> queue_sp) :
     _name(name),
-    _queueSP(queueSP)
+    _queue_sp(queue_sp)
 {
-    assert(queueSP != nullptr);
+    assert(queue_sp != nullptr);
 }
 
 Reader::~Reader()
 {
     if (_thread.joinable()) {
-        _queueSP->stop();
+        _queue_sp->stop();
         _thread.join();
     }
 }
@@ -37,7 +37,7 @@ void Reader::mainFunc()
     std::string msg;
     do
     {
-        ret = _queueSP->get(&msg);
+        ret = _queue_sp->get(&msg);
         if (ret == RetCode::OK)
             _handleMessage(msg);
     } while (ret == RetCode::OK);
@@ -47,8 +47,8 @@ void Reader::mainFunc()
 
 void Reader::_handleMessage(const std::string & msg)
 {
-    ++gmsgNum;
+    ++gmsg_num;
     logConsole(_name + " read >>> " + msg + "\n");
 }
 
-} // namespace ZodiacTest 
+} // namespace zodiactest 

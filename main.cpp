@@ -6,7 +6,7 @@
 
 #include "console.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
 void QueueEvents::on_start()
 {
@@ -31,23 +31,23 @@ void QueueEvents::on_lwm()
 }
 
 Main::Main(size_t rnum, size_t wnum) :
-    _mqueueSP(std::make_shared<MessageQueue<std::string>>(10, 0, 10))
+    _mqueue_sp(std::make_shared<MessageQueue<std::string>>(10, 0, 10))
 {
-    _mqueueSP->set_events(std::make_shared<QueueEvents>());
+    _mqueue_sp->set_events(std::make_shared<QueueEvents>());
 
     for(size_t i = 0; i != rnum; i++)
         _readers.emplace_back(Reader("Reader" + std::to_string(i),
-                                     _mqueueSP));
+                                     _mqueue_sp));
 
     for(size_t i = 0; i != wnum; i++)
         _writers.emplace_back(Writer(static_cast<int>(i), /* increasing priority */
                                      "Writer" + std::to_string(i),
-                                     _mqueueSP));
+                                     _mqueue_sp));
 }
 
 void Main::main()
 {
-    _mqueueSP->run();
+    _mqueue_sp->run();
     for(auto & reader : _readers)
         reader.run();
 
@@ -57,7 +57,7 @@ void Main::main()
 
 void Main::stop() noexcept
 {
-    _mqueueSP->stop();
+    _mqueue_sp->stop();
     /* join all threads */
     _readers.clear();
     _writers.clear();
@@ -65,25 +65,25 @@ void Main::stop() noexcept
 
 void Main::flush()
 {
-    auto queueFlush = Reader("LastReader", _mqueueSP);
+    auto queueFlush = Reader("LastReader", _mqueue_sp);
 
     /* notifiers not needed */
-    _mqueueSP->set_events(nullptr);
+    _mqueue_sp->set_events(nullptr);
 
     std::clog << "Let's flush queue\n";
     
-    _mqueueSP->run(); // runnable state again
+    _mqueue_sp->run(); // runnable state again
     queueFlush.run();
     
     /* hope this is enough */
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    _mqueueSP->stop();
+    _mqueue_sp->stop();
 
     std::clog << ("Writers wrote " +
-                  std::to_string(Writer::gmsgNum) +
+                  std::to_string(Writer::gmsg_num) +
                   " messages\n");
     std::clog << ("Readers handled " +
-                  std::to_string(Reader::gmsgNum) +
+                  std::to_string(Reader::gmsg_num) +
                   " messages\n");
 }
 
@@ -94,11 +94,11 @@ Main::~Main()
 }
 
 
-} // namespace ZodiacTest
+} // namespace zodiactest
 
 int main(int argc, char ** argv)
 {
-    ZodiacTest::Main app(1/*readers*/, 2/*writers*/);
+    zodiactest::Main app(1/*readers*/, 2/*writers*/);
 
     std::clog << "Press enter to start\n";
     std::cin.get();

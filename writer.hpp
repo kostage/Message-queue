@@ -11,7 +11,7 @@
 
 #include "messagequeue.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
 class Writer
 {
@@ -25,7 +25,7 @@ class Writer
 public:
     Writer(int priority,
            const std::string & name, 
-           std::shared_ptr<Queue> queueSP);
+           std::shared_ptr<Queue> queue_sp);
 
     ~Writer();
     
@@ -40,18 +40,18 @@ public:
     static void wakeAll();
     static void suspendAll();
 
-    static std::atomic<size_t> gmsgNum;
+    static std::atomic<size_t> gmsg_num;
 
 private:
     static WriterState _state;
-    static std::mutex _gMtx;
-    static std::condition_variable _gNotify;
-    static std::atomic<size_t> _gmsgNum;
+    static std::mutex _g_mtx;
+    static std::condition_variable _g_notify;
+    static std::atomic<size_t> _gmsg_num;
 
     const int _priority;
     const std::string _name;
-    std::shared_ptr<Queue> _queueSP;
+    std::shared_ptr<Queue> _queue_sp;
     std::thread _thread;
 };
 
-} // namespace ZodiacTest 
+} // namespace zodiactest 

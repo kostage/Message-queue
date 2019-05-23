@@ -5,30 +5,30 @@
 
 #include "console.hpp"
 
-namespace ZodiacTest {
+namespace zodiactest {
 
 typename Writer::WriterState Writer::_state = WriterState::SUSPENDED;
 
-std::mutex Writer::_gMtx;
+std::mutex Writer::_g_mtx;
 
-std::condition_variable Writer::_gNotify;
+std::condition_variable Writer::_g_notify;
 
-std::atomic<size_t> Writer::gmsgNum{0};
+std::atomic<size_t> Writer::gmsg_num{0};
 
 Writer::Writer(int priority,
                const std::string & name, 
-               std::shared_ptr<Queue> queueSP) :
+               std::shared_ptr<Queue> queue_sp) :
     _priority{priority},
     _name(name),
-    _queueSP(queueSP)
+    _queue_sp(queue_sp)
 {
-    assert(queueSP != nullptr);
+    assert(queue_sp != nullptr);
 }
 
 Writer::~Writer()
 {
     if (_thread.joinable()) {
-        _queueSP->stop();
+        _queue_sp->stop();
         _thread.join();
     }
 }
@@ -49,10 +49,10 @@ void Writer::mainFunc()
         auto msg = _name + " string #" + std::to_string(localMsgNum++);
         RetCode ret;
 
-        ret = _queueSP->put(msg, prior);
+        ret = _queue_sp->put(msg, prior);
         
         if (ret == RetCode::OK) {
-            ++gmsgNum;
+            ++gmsg_num;
             logConsole(msg + "\n");
         } else if (ret == RetCode::STOPPED) {
             break;
@@ -63,18 +63,18 @@ void Writer::mainFunc()
 
 void Writer::wakeAll()
 {
-    std::unique_lock<std::mutex> lock(_gMtx);
+    std::unique_lock<std::mutex> lock(_g_mtx);
     _state = WriterState::RUNNING;
-    _gNotify.notify_all();
+    _g_notify.notify_all();
 }
 
 void Writer::suspendAll()
 {
-    std::unique_lock<std::mutex> lock(_gMtx);
+    std::unique_lock<std::mutex> lock(_g_mtx);
     _state = WriterState::SUSPENDED;
-    _gNotify.wait(lock, []() {
+    _g_notify.wait(lock, []() {
             return _state == WriterState::RUNNING;
         });
 }
 
-} // namespace ZodiacTest 
+} // namespace zodiactest 

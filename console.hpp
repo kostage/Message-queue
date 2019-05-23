@@ -3,20 +3,20 @@
 
 #include <iostream>
 
-namespace ZodiacTest {
+namespace zodiactest {
 
     #ifdef DEBUG
-    template<typename ... Strings>
-    void logConsole( Strings&& ... strs )
+    template<typename String>
+    void logConsole(String&& str)
     {
-        (std::clog << ... << std::forward<Strings>(strs));
+        std::clog << std::forward<String>(str);
     }
     #else
-    template<typename ... Strings>
-    void logConsole( Strings&& ... strs ) 
+    template<typename String>
+    void logConsole(String&&)
     {
     }
     
     #endif
 
-} // namespace ZodiacTest
+} // namespace zodiactest
