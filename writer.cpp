@@ -13,7 +13,7 @@ std::mutex Writer::_g_mtx;
 
 std::condition_variable Writer::_g_notify;
 
-std::atomic<size_t> Writer::gmsg_num{0};
+std::atomic<int> Writer::gmsg_num{0};
 
 Writer::Writer(int priority,
                const std::string & name, 
@@ -43,7 +43,7 @@ void Writer::run()
 void Writer::mainFunc()
 {
     auto prior = _priority;
-    size_t localMsgNum = 0;
+    int localMsgNum = 0;
     while (true)
     {
         auto msg = _name + " string #" + std::to_string(localMsgNum++);

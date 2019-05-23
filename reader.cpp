@@ -7,7 +7,7 @@
 
 namespace zodiactest {
 
-std::atomic<size_t> Reader::gmsg_num{0};
+std::atomic<int> Reader::gmsg_num{0};
 
 Reader::Reader(const std::string & name,
                std::shared_ptr<Queue> queue_sp) :

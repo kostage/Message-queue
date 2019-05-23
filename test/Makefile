@@ -19,9 +19,6 @@ GTEST_DIR = /home/kostage/googletest/googletest
 # Points to the location of the Google Test libraries
 GTEST_LIB_DIR = .
 
-# Where to find user code.
-USER_OBJECTS = reader.o writer.o
-
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
@@ -71,12 +68,6 @@ libgtest.a : gtest-all.o
 $(TEST) : $(USER_OBJECTS) $(TEST).o $(GTEST_LIBS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(USER_OBJECTS) $(TEST).o -L$(GTEST_LIB_DIR) \
  -o $@ -lgtest -lpthread -lrt
-
-reader.o:
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../reader.cpp -o $@
-
-writer.o:
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c ../writer.cpp -o $@
 
 debug:
 	@echo $(USER_OBJECTS)

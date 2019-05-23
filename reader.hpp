@@ -26,7 +26,7 @@ public:
     void run();
     void mainFunc();
     
-    static std::atomic<size_t> gmsg_num;
+    static std::atomic<int> gmsg_num;
 
 protected:
     void _handleMessage(const std::string & msg);

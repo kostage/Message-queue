@@ -40,13 +40,12 @@ public:
     static void wakeAll();
     static void suspendAll();
 
-    static std::atomic<size_t> gmsg_num;
+    static std::atomic<int> gmsg_num;
 
 private:
     static WriterState _state;
     static std::mutex _g_mtx;
     static std::condition_variable _g_notify;
-    static std::atomic<size_t> _gmsg_num;
 
     const int _priority;
     const std::string _name;

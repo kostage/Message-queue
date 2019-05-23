@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-O0 -g3 -ggdb -Wall -Wpedantic -Wconversion -std=c++11 -DDEBUG -c -MD
+CXXFLAGS=-O0 -g3 -ggdb -Wall -Wpedantic -Wconversion -std=c++17 -DDEBUG -c -MD
 SOURCE_ROOT=./
 LDFLAGS=-lpthread
 

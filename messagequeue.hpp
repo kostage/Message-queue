@@ -91,6 +91,7 @@ private:
     int _lwm;
     int _hwm;
     QueueState _queue_state;
+    bool _hwm_flag; // solves multiple LWM notification problem
     std::vector<MessageTypePrior> _data;
     std::shared_ptr<IMessageQueueEvents> _events;
     mutable std::mutex _data_mtx;
@@ -101,7 +102,8 @@ private:
 template<typename MessageType>
 MessageQueue<MessageType>::MessageQueue(int queue_size,
                                         int lwm, int hwm) :
-    _queue_state{QueueState::STOPPED}
+    _queue_state{QueueState::STOPPED},
+    _hwm_flag{false}
 {
     assert(queue_size > 0);
     _queue_size = queue_size;
@@ -138,6 +140,7 @@ MessageQueue<MessageType>::put(const MessageType & message,
         /* hwm condition and events mechanism active */
         /* increment use count since need to access
            _events in unlocked context */
+        _hwm_flag = true;
         auto events = _events;
         lock.unlock();
         events->on_hwm();
@@ -211,10 +214,12 @@ MessageQueue<MessageType>::get(MessageType * message)
     _data.pop_back();
 
     if (_events &&
+        _hwm_flag &&
         static_cast<int>(_data.size()) == _lwm)
     {
         /* increment use count since need to access
            _events in unlocked context */
+        _hwm_flag = false;
         auto events = _events;
         lock.unlock();
         events->on_lwm();
