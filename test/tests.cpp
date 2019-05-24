@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <chrono>
 
 using ::testing::Test;
 using ::testing::InitGoogleTest;
