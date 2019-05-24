@@ -75,7 +75,7 @@ void Main::flush()
     _mqueue_sp->run(); // runnable state again
     queueFlush.run();
     
-    /* hope this is enough */
+    /* hope this is enough for cleanup */
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     _mqueue_sp->stop();
 

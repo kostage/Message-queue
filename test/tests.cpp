@@ -191,7 +191,7 @@ protected:
         _tw1.join();
         _tw2.join();
         std::cout << "Flush queue\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(00));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         _q.stop();
         _tr1.join();
         _tr2.join();
@@ -239,8 +239,8 @@ class QueueTestWaterMarks : public ::testing::Test {
         
         void on_lwm() final
         {
-            _q->stop();
             TestReader::stop_flag = true;
+            _q->stop();
             ++lwm_flag;
         }
     private:
@@ -279,8 +279,8 @@ protected:
         _q.set_events(std::make_shared<QueueTestEvents>(
                           &_q, &_tr1, &_tw1));
         _q.run();
-        _tr1.join();
         _tw1.join();
+        _tr1.join();
         ASSERT_EQ(start_flag, 1);
         ASSERT_EQ(stop_flag, 1);
         ASSERT_EQ(hwm_flag, 1);
