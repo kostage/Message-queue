@@ -3,10 +3,11 @@
 #include "gtest/gtest.h"
 
 #include <atomic>
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <future>
 #include <thread>
-#include <chrono>
 
 using ::testing::Test;
 using ::testing::InitGoogleTest;
@@ -15,6 +16,19 @@ using namespace zodiactest;
 
 namespace {
 
+#define ASSERT_DURATION_LE(secs, stmt) {                                \
+        std::promise<void> completed;                                   \
+        auto stmt_future = completed.get_future();                      \
+        std::thread([&](std::promise<void>& completed) {                \
+                stmt;                                                   \
+                completed.set_value();                                  \
+            }, std::ref(completed)).detach();                           \
+        if(stmt_future.wait_for(std::chrono::seconds(secs)) ==          \
+           std::future_status::timeout)                                 \
+            GTEST_FATAL_FAILURE_("timed out (> " #secs                  \
+                                 " seconds). Check code for hangups");  \
+    }                                                                   \
+    
 class QueueTestPriority : public ::testing::Test {
     
     static constexpr int QUEUE_SIZE = 10;
@@ -265,9 +279,7 @@ public:
 protected:
     void SetUp() override {
         TestReader::stop_flag = false;
-        TestReader::gmsg_num = 0;
         TestWriter::stop_flag = false;
-        TestWriter::gmsg_num = 0;
         start_flag = 0;
         stop_flag = 0;
         hwm_flag = 0;
@@ -279,13 +291,18 @@ protected:
     {
         _q.set_events(std::make_shared<QueueTestEvents>(
                           &_q, &_tr1, &_tw1));
-        _q.run();
-        _tw1.join();
-        _tr1.join();
-        ASSERT_EQ(start_flag, 1);
-        ASSERT_EQ(stop_flag, 1);
-        ASSERT_EQ(hwm_flag, 1);
-        ASSERT_EQ(lwm_flag, 1);
+        for (int i = 0; i != 1000; i++)
+        {
+            _q.run();
+            _tw1.join();
+            _tr1.join();
+            TestReader::stop_flag = false;
+            TestWriter::stop_flag = false;
+        }
+        ASSERT_EQ(start_flag, 1000);
+        ASSERT_EQ(stop_flag, 1000);
+        ASSERT_EQ(hwm_flag, 1000);
+        ASSERT_EQ(lwm_flag, 1000);
     }
 
     MessageQueue<int> _q;
@@ -299,19 +316,23 @@ std::atomic<int> QueueTestWaterMarks::hwm_flag{0};
 std::atomic<int> QueueTestWaterMarks::lwm_flag{0};
 
 TEST_F(QueueTestPriority, PriorityTest) {
-  TestPriority();
+    ASSERT_DURATION_LE(5,
+                       TestPriority());
 }
 
 TEST_F(QueueTestThreadSafety, MTSafeTestWithoutEvents) {
-    TestThreadSafety(nullptr);
+    ASSERT_DURATION_LE(5,
+                       TestThreadSafety(nullptr));
 }
 
 TEST_F(QueueTestThreadSafety, MTSafeTestWithEvents) {
-    TestThreadSafety(std::make_shared<QueueNopEvents>());
+    ASSERT_DURATION_LE(5, TestThreadSafety(
+                           std::make_shared<QueueNopEvents>()));
 }
 
 TEST_F(QueueTestWaterMarks, TestWaterMarkNotifiers) {
-    TestWaterMarks();
+    ASSERT_DURATION_LE(5,
+                       TestWaterMarks());
 }
 
 }  // namespace
