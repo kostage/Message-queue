@@ -63,6 +63,38 @@ protected:
 
     MessageQueue<int> _q;
 };
+class QueueTestEqualPriority : public ::testing::Test {
+    
+    static constexpr int QUEUE_SIZE = 10;
+public:
+    QueueTestEqualPriority() : _q(QUEUE_SIZE, 0, QUEUE_SIZE) 
+    {}
+
+protected:
+    void SetUp() override {
+        _q.run();
+    }
+    /* Test equal priority elements are popped from queue
+       in FIFO order */
+    void TestPriority() {
+        for(int i = 0; i != QUEUE_SIZE; i++) {
+            _q.put(i, 0);
+        }
+        for(int i = 0; i != QUEUE_SIZE; i++) {
+            int val;
+            /* elements supposed to be popped
+               in FIFO order */
+            ASSERT_EQ(_q.get(&val), RetCode::OK);
+            /* new val must be greater than previous */
+            ASSERT_EQ(val, i);
+        }
+        
+        _q.stop();
+    }
+
+    MessageQueue<int> _q;
+};
+
 class TestWriter 
 {
 public:
@@ -320,6 +352,11 @@ TEST_F(QueueTestPriority, PriorityTest) {
                        TestPriority());
 }
 
+TEST_F(QueueTestEqualPriority, EqualPriorityTest) {
+    ASSERT_DURATION_LE(5,
+                       TestPriority());
+}
+
 TEST_F(QueueTestThreadSafety, MTSafeTestWithoutEvents) {
     ASSERT_DURATION_LE(5,
                        TestThreadSafety(nullptr));
@@ -338,6 +375,6 @@ TEST_F(QueueTestWaterMarks, TestWaterMarkNotifiers) {
 }  // namespace
 
 int main(int argc, char **argv) {
-  InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

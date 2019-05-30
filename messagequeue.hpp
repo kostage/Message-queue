@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <cassert>
 #include <condition_variable>
+#include <map>
+#include <queue>
 #include <memory>
 #include <mutex>
-#include <vector>
 
 namespace zodiactest {
     
@@ -33,10 +34,6 @@ class MessageQueue
 {
     using MessageTypePrior = std::pair<int, MessageType>;
 
-    template<typename Y>
-    using Convertible
-    = typename std::enable_if<std::is_convertible<Y, MessageType*>::value>::type;
-
     enum class QueueState : int {
         RUNNING = 0,
         STOPPED
@@ -55,19 +52,6 @@ public:
     put(const MessageType & message,
         int priority);
 
-/* overdesign
-   RetCode
-   put(MessageType && message,
-   int priority);
-
-   template<class Y, typename = Convertible<Y*>>
-   RetCode
-   put(Y && message,
-   int priority)
-   {
-   return put(std::forward<Y>(message), priority, blocking);
-   }
-*/
     RetCode
     get(MessageType * message);
 
@@ -79,22 +63,26 @@ public:
     int size() const noexcept;
     
 private:
-    static bool comparePrior(int lhs, int rhs) 
-    {
-        return lhs < rhs;
-    }
     void _notifyReaders() const noexcept;
     void _notifyWriters() const noexcept;
+    void _push(const MessageType & message, int priority);
+    void _pop(MessageType * message);
+    inline int _size() const noexcept
+    {
+        return _current_size;
+    }
     
 private:
+    int _current_size;
     int _queue_size;
     int _lwm;
     int _hwm;
     QueueState _queue_state;
     bool _hwm_flag; // solves multiple LWM notification problem
-    std::vector<MessageTypePrior> _data;
+    /* would be effective when number of priorities is not high */
+    std::map<int, std::queue<MessageType>> _map_of_queue;
     std::shared_ptr<IMessageQueueEvents> _events;
-    mutable std::mutex _data_mtx;
+    mutable std::mutex _mtx;
     mutable std::condition_variable _rd_notify;
     mutable std::condition_variable _wr_notify;
 };
@@ -102,6 +90,7 @@ private:
 template<typename MessageType>
 MessageQueue<MessageType>::MessageQueue(int queue_size,
                                         int lwm, int hwm) :
+    _current_size{0},
     _queue_state{QueueState::STOPPED},
     _hwm_flag{false}
 {
@@ -114,8 +103,6 @@ MessageQueue<MessageType>::MessageQueue(int queue_size,
 
     _lwm = lwm;
     _hwm = hwm;
-  
-    _data.reserve(_queue_size);
 }
 
 template<typename MessageType>
@@ -129,13 +116,13 @@ RetCode
 MessageQueue<MessageType>::put(const MessageType & message,
                                int priority)
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     
     if (_queue_state == QueueState::STOPPED) {
         return RetCode::STOPPED;
     }
     
-    if (_events && static_cast<int>(_data.size()) >= _hwm)
+    if (_events && _size() >= _hwm)
     {
         /* hwm condition and events mechanism active */
         /* increment use count since need to access
@@ -158,25 +145,21 @@ MessageQueue<MessageType>::put(const MessageType & message,
            HENCE - writers have ability to race
            for writing higher than HWM level*/
     }
-    if (static_cast<int>(_data.size()) == _queue_size) {
+    if (_size() == _queue_size) {
         /* no free space -
            wait writers notification */
         _wr_notify.wait(lock, [this] {
                 return _queue_state == QueueState::STOPPED ||
-                    static_cast<int>(_data.size()) != _queue_size;
+                    _size() != _queue_size;
             });
         /* anything could happen - recheck */
         if (_queue_state == QueueState::STOPPED) {
             return RetCode::STOPPED;
         }
     }
+
+    _push(message, priority);
     
-    _data.push_back(std::make_pair(priority, message));
-    std::push_heap(_data.begin(),
-                   _data.end(),
-                   [](const MessageTypePrior & lhs, const MessageTypePrior & rhs) {
-                       return comparePrior(lhs.first, rhs.first);
-                   });
     _notifyReaders();
     return RetCode::OK;
 }
@@ -185,17 +168,17 @@ template<typename MessageType>
 RetCode
 MessageQueue<MessageType>::get(MessageType * message)
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     
     if (_queue_state == QueueState::STOPPED) {
         return RetCode::STOPPED;
     }
     
-    if (_data.size() == 0) {
+    if (_size() == 0) {
         /* emty queue - wait notififcation from writers */
         _rd_notify.wait(lock, [this] {
                 return _queue_state == QueueState::STOPPED ||
-                    !_data.empty();
+                    _size();
             });
     }
 
@@ -204,18 +187,11 @@ MessageQueue<MessageType>::get(MessageType * message)
         return RetCode::STOPPED;
     }
     
-    std::pop_heap(_data.begin(),
-                  _data.end(),
-                  [](const MessageTypePrior & lhs, const MessageTypePrior & rhs) {
-                      return comparePrior(lhs.first, rhs.first);
-                  });
-
-    *message = std::move(_data.back().second);
-    _data.pop_back();
-
+    _pop(message);
+    
     if (_events &&
         _hwm_flag &&
-        static_cast<int>(_data.size()) == _lwm)
+        _size() == _lwm)
     {
         /* increment use count since need to access
            _events in unlocked context */
@@ -231,7 +207,7 @@ MessageQueue<MessageType>::get(MessageType * message)
 template<typename MessageType>
 void MessageQueue<MessageType>::run()
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     _queue_state = QueueState::RUNNING; // make atomic?
     if (_events) {
         /* increment use count since need to access
@@ -247,7 +223,7 @@ void MessageQueue<MessageType>::run()
 template<typename MessageType>
 void MessageQueue<MessageType>::stop()
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     _queue_state = QueueState::STOPPED;  // make atomic?
     if (_events) {
         /* increment use count since need to access
@@ -276,15 +252,40 @@ template<typename MessageType>
 void MessageQueue<MessageType>::set_events(
     std::shared_ptr<IMessageQueueEvents> events)
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     _events = events;
 }
 
 template<typename MessageType>
 int MessageQueue<MessageType>::size() const noexcept
 {
-    std::unique_lock<std::mutex> lock(_data_mtx);
-    return static_cast<int>(_data.size());
+    std::unique_lock<std::mutex> lock(_mtx);
+    return _size();
+}
+
+template<typename MessageType>
+void MessageQueue<MessageType>::_push(const MessageType & message, int priority)
+{
+    auto & queue_ref = _map_of_queue[priority];
+    queue_ref.push(message);
+    ++_current_size;
+}
+
+template<typename MessageType>
+void MessageQueue<MessageType>::_pop(MessageType * message)
+{
+    auto max_priority_pair_it = _map_of_queue.end();
+    /* max element of map is at the end */
+    --max_priority_pair_it;
+    auto & max_priority_queue = max_priority_pair_it->second;
+    
+    *message = std::move(max_priority_queue.front());
+    max_priority_queue.pop();
+    
+    if (!max_priority_queue.size())
+        _map_of_queue.erase(max_priority_pair_it);
+    
+    --_current_size;
 }
 
 } // namespace zodiactest 
