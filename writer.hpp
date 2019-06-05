@@ -13,26 +13,19 @@
 
 namespace zodiactest {
 
-class Writer
-{
-    enum class WriterState : int 
-    {
-        SUSPENDED = 0,
-        RUNNING
-    };
-    
+class Writer {
     using Queue = MessageQueue<std::string>;
 public:
     Writer(int priority,
-           const std::string & name, 
+           const std::string& name, 
            std::shared_ptr<Queue> queue_sp);
-
-    ~Writer();
     
     Writer(const Writer&) = delete;
     Writer& operator=(const Writer&) = delete;
     Writer(Writer&&) = default;
     Writer& operator=(Writer&&) = default;
+
+    ~Writer();
 
     void run();
     void mainFunc();
@@ -43,6 +36,11 @@ public:
     static std::atomic<int> gmsg_num;
 
 private:
+    enum class WriterState : int {
+        SUSPENDED = 0,
+        RUNNING
+    };
+    
     static WriterState _state;
     static std::mutex _g_mtx;
     static std::condition_variable _g_notify;

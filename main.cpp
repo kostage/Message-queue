@@ -8,32 +8,27 @@
 
 namespace zodiactest {
 
-void QueueEvents::on_start()
-{
+void QueueEvents::on_start() {
     Writer::wakeAll();
 }
 
-void QueueEvents::on_stop() noexcept
-{
+void QueueEvents::on_stop() noexcept {
     Writer::wakeAll();
 }
 
-void QueueEvents::on_hwm()
-{
+void QueueEvents::on_hwm() {
     logConsole("***Queue high watermark reached!\n");
     Writer::suspendAll();
 }
 
-void QueueEvents::on_lwm()
-{
+void QueueEvents::on_lwm() {
     logConsole("***Queue low watermark reached!\n");
     Writer::wakeAll();
 }
 
-Main::Main(size_t rnum, size_t wnum) :
-    _mqueue_sp(std::make_shared<MessageQueue<std::string>>(10, 0, 10))
-{
-    _mqueue_sp->set_events(std::make_shared<QueueEvents>());
+Main::Main(size_t rnum, size_t wnum)
+    : _mqueue_sp(std::make_shared<MessageQueue<std::string>>(10, 0, 10)) {
+    _mqueue_sp->setEvents(std::make_shared<QueueEvents>());
 
     for(size_t i = 0; i != rnum; i++)
         _readers.emplace_back(Reader("Reader" + std::to_string(i),
@@ -45,8 +40,7 @@ Main::Main(size_t rnum, size_t wnum) :
                                      _mqueue_sp));
 }
 
-void Main::main()
-{
+void Main::main() {
     _mqueue_sp->run();
     for(auto & reader : _readers)
         reader.run();
@@ -68,7 +62,7 @@ void Main::flush()
     auto queueFlush = Reader("LastReader", _mqueue_sp);
 
     /* notifiers not needed */
-    _mqueue_sp->set_events(nullptr);
+    _mqueue_sp->setEvents(nullptr);
 
     std::clog << "Let's flush queue\n";
     

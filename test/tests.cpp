@@ -225,7 +225,7 @@ protected:
     void TestThreadSafety(std::shared_ptr<IMessageQueueEvents> events)
     {
         if (events) {
-            _q.set_events(events);
+            _q.setEvents(events);
         }
         _q.run();
         _tr1.run();
@@ -321,7 +321,7 @@ protected:
        is equal to popped in mt environment */
     void TestWaterMarks()
     {
-        _q.set_events(std::make_shared<QueueTestEvents>(
+        _q.setEvents(std::make_shared<QueueTestEvents>(
                           &_q, &_tr1, &_tw1));
         for (int i = 0; i != 1000; i++)
         {

@@ -17,8 +17,7 @@ enum class RetCode : int {
     STOPPED = -3
 };
 
-class IMessageQueueEvents 
-{
+class IMessageQueueEvents {
 public:
     IMessageQueueEvents() {}
     virtual ~IMessageQueueEvents() {}
@@ -26,53 +25,45 @@ public:
     virtual void on_start() = 0;
     virtual void on_hwm() = 0;
     virtual void on_lwm() = 0;
-    virtual void on_stop() noexcept = 0; // call in destructor
+    virtual void on_stop() = 0;
 };
 
 template <typename MessageType>
-class MessageQueue 
-{
-    using MessageTypePrior = std::pair<int, MessageType>;
-
-    enum class QueueState : int {
-        RUNNING = 0,
-        STOPPED
-    };
-
+class MessageQueue {
 public:
     MessageQueue(int queue_size, int lwm, int hwm);
-    ~MessageQueue();
     
     MessageQueue(const MessageQueue&) = delete;
     MessageQueue& operator=(const MessageQueue&) = delete;
     MessageQueue(MessageQueue&&) = default;
     MessageQueue& operator=(MessageQueue&&) = default;
 
-    RetCode
-    put(const MessageType & message,
-        int priority);
+    ~MessageQueue();
 
-    RetCode
-    get(MessageType * message);
-
-    void
-    set_events(std::shared_ptr<IMessageQueueEvents> events);
+    RetCode put(const MessageType& message, int priority);
+    RetCode get(MessageType* message);
+    void setEvents(std::shared_ptr<IMessageQueueEvents> events);
 
     void stop();
     void run();
     int size() const noexcept;
     
 private:
+    using MessageTypePrior = std::pair<int, MessageType>;
+    enum class QueueState : int {
+        RUNNING = 0,
+        STOPPED
+    };
+
     void _notifyReaders() const noexcept;
     void _notifyWriters() const noexcept;
-    void _push(const MessageType & message, int priority);
-    void _pop(MessageType * message);
-    inline int _size() const noexcept
-    {
+    void _push(const MessageType& message, int priority);
+    void _pop(MessageType* message);
+    
+    inline int _size() const noexcept {
         return _current_size;
     }
     
-private:
     int _current_size;
     int _queue_size;
     int _lwm;
@@ -89,45 +80,39 @@ private:
 
 template<typename MessageType>
 MessageQueue<MessageType>::MessageQueue(int queue_size,
-                                        int lwm, int hwm) :
-    _current_size{0},
-    _queue_state{QueueState::STOPPED},
-    _hwm_flag{false}
-{
+                                        int lwm, int hwm)
+    : _current_size{0},
+      _queue_state{QueueState::STOPPED},
+      _hwm_flag{false} {
     assert(queue_size > 0);
     _queue_size = queue_size;
 
     assert(lwm >= 0 && lwm < _queue_size);
     assert(hwm >= 0 && hwm <= _queue_size);
     assert(lwm  < hwm);
-
     _lwm = lwm;
     _hwm = hwm;
 }
 
 template<typename MessageType>
-MessageQueue<MessageType>::~MessageQueue()
-{
+MessageQueue<MessageType>::~MessageQueue() {
     stop();
 }
 
 template<typename MessageType>
-RetCode
-MessageQueue<MessageType>::put(const MessageType & message,
-                               int priority)
-{
+RetCode MessageQueue<MessageType>::put(const MessageType& message,
+                                       int priority) {
     std::unique_lock<std::mutex> lock(_mtx);
     
     if (_queue_state == QueueState::STOPPED) {
         return RetCode::STOPPED;
     }
     
-    if (_events && _size() >= _hwm)
-    {
-        /* hwm condition and events mechanism active */
+    /* hwm condition and events mechanism active */
+    if (_events && _size() >= _hwm) {
+        _hwm_flag = true;
         /* increment use count since need to access
            _events in unlocked context */
-        _hwm_flag = true;
         auto events = _events;
         lock.unlock();
         events->on_hwm();
@@ -165,9 +150,7 @@ MessageQueue<MessageType>::put(const MessageType & message,
 }
 
 template<typename MessageType>
-RetCode
-MessageQueue<MessageType>::get(MessageType * message)
-{
+RetCode MessageQueue<MessageType>::get(MessageType* message) {
     std::unique_lock<std::mutex> lock(_mtx);
     
     if (_queue_state == QueueState::STOPPED) {
@@ -178,7 +161,7 @@ MessageQueue<MessageType>::get(MessageType * message)
         /* emty queue - wait notififcation from writers */
         _rd_notify.wait(lock, [this] {
                 return _queue_state == QueueState::STOPPED ||
-                    _size();
+                    _size() != 0;
             });
     }
 
@@ -189,13 +172,10 @@ MessageQueue<MessageType>::get(MessageType * message)
     
     _pop(message);
     
-    if (_events &&
-        _hwm_flag &&
-        _size() == _lwm)
-    {
+    if (_events && _hwm_flag && _size() == _lwm) {
+        _hwm_flag = false;
         /* increment use count since need to access
            _events in unlocked context */
-        _hwm_flag = false;
         auto events = _events;
         lock.unlock();
         events->on_lwm();
@@ -205,8 +185,7 @@ MessageQueue<MessageType>::get(MessageType * message)
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::run()
-{
+void MessageQueue<MessageType>::run() {
     std::unique_lock<std::mutex> lock(_mtx);
     _queue_state = QueueState::RUNNING; // make atomic?
     if (_events) {
@@ -221,8 +200,7 @@ void MessageQueue<MessageType>::run()
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::stop()
-{
+void MessageQueue<MessageType>::stop() {
     std::unique_lock<std::mutex> lock(_mtx);
     _queue_state = QueueState::STOPPED;  // make atomic?
     if (_events) {
@@ -237,51 +215,47 @@ void MessageQueue<MessageType>::stop()
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::_notifyReaders() const noexcept
-{
+void MessageQueue<MessageType>::_notifyReaders() const noexcept {
     _rd_notify.notify_all();
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::_notifyWriters() const noexcept
-{
+void MessageQueue<MessageType>::_notifyWriters() const noexcept {
     _wr_notify.notify_all();
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::set_events(
-    std::shared_ptr<IMessageQueueEvents> events)
-{
+void MessageQueue<MessageType>::setEvents(
+    std::shared_ptr<IMessageQueueEvents> events) {
     std::unique_lock<std::mutex> lock(_mtx);
     _events = events;
 }
 
 template<typename MessageType>
-int MessageQueue<MessageType>::size() const noexcept
-{
+int MessageQueue<MessageType>::size() const noexcept {
     std::unique_lock<std::mutex> lock(_mtx);
     return _size();
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::_push(const MessageType & message, int priority)
-{
-    auto & queue_ref = _map_of_queue[priority];
+void MessageQueue<MessageType>::_push(const MessageType& message, int priority) {
+    auto& queue_ref = _map_of_queue[priority];
     queue_ref.push(message);
     ++_current_size;
 }
 
 template<typename MessageType>
-void MessageQueue<MessageType>::_pop(MessageType * message)
-{
+void MessageQueue<MessageType>::_pop(MessageType* message) {
+    assert(message != nullptr);
     auto max_priority_pair_it = _map_of_queue.end();
     /* max element of map is at the end */
     --max_priority_pair_it;
-    auto & max_priority_queue = max_priority_pair_it->second;
+    auto& max_priority_queue = max_priority_pair_it->second;
     
     *message = std::move(max_priority_queue.front());
     max_priority_queue.pop();
-    
+
+    /* if queue's become empty get rid of unneeded map node */
     if (!max_priority_queue.size())
         _map_of_queue.erase(max_priority_pair_it);
     
